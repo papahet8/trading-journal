@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MarketType {
+  OPTIONS
+  FUTURES
+  EQUITY
+  CRYPTO
+  FOREX
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum ScreenshotPhase {
+  BEFORE
+  DURING
+  AFTER
+}
+
+enum TagCategory {
+  SETUP
+  MISTAKE
+  BEHAVIOR
+  CUSTOM
+}
+
+enum GoalType {
+  TRADING
+  PERSONAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  trades            Trade[]
+  dailyLogs         DailyLog[]
+  goals             Goal[]
+  disciplineScores  DisciplineScore[]
+  tags              Tag[]
+  inviteCodesUsed   InviteCode[] @relation("UsedBy")
+  accounts          Account[]
+  sessions          Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  usedById  String?
+  usedBy    User?     @relation("UsedBy", fields: [usedById], references: [id])
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Trade {
+  id               String     @id @default(cuid())
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instrument       String
+  marketType       MarketType
+  direction        Direction
+  entryPrice       Decimal    @db.Decimal(18, 8)
+  exitPrice        Decimal    @db.Decimal(18, 8)
+  quantity         Decimal    @db.Decimal(18, 8)
+  stopLoss         Decimal?   @db.Decimal(18, 8)
+  target           Decimal?   @db.Decimal(18, 8)
+  riskReward       Decimal?   @db.Decimal(10, 4)
+  brokerageCharges Decimal    @default(0) @db.Decimal(18, 8)
+  setupType        String?
+  timeframe        String?
+  strategy         String?
+  confidence       Int?
+  executionRating  Int?
+  tradedAt         DateTime
+  notes            String?    @db.Text
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  screenshots TradeScreenshot[]
+  tags        TradeTag[]
+  psychology  TradePsychology?
+
+  @@index([userId, tradedAt])
+}
+
+model TradeScreenshot {
+  id         String          @id @default(cuid())
+  tradeId    String
+  trade      Trade           @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  phase      ScreenshotPhase
+  url        String
+  uploadedAt DateTime        @default(now())
+
+  @@unique([tradeId, phase])
+}
+
+model Tag {
+  id       String      @id @default(cuid())
+  name     String
+  category TagCategory @default(CUSTOM)
+  userId   String?
+  user     User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades   TradeTag[]
+
+  @@unique([name, userId])
+}
+
+model TradeTag {
+  tradeId String
+  tagId   String
+  trade   Trade  @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tradeId, tagId])
+}
+
+model TradePsychology {
+  id             String  @id @default(cuid())
+  tradeId        String  @unique
+  trade          Trade   @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  moodBefore     Int?
+  energyBefore   Int?
+  confidenceBefore Int?
+  sleepQuality   Int?
+  emotionalAfter String?
+  followedRules  Boolean?
+  mistake        String? @db.Text
+}
+
+model DailyLog {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                DateTime  @db.Date
+  wakeUpTime          String?
+  gym                 Boolean   @default(false)
+  meditation          Boolean   @default(false)
+  reading             Boolean   @default(false)
+  deepWorkMinutes     Int?
+  screenTimeMinutes   Int?
+  wentWell            String?   @db.Text
+  wentWrong           String?   @db.Text
+  marketObservations  String?   @db.Text
+  lessonsLearned      String?   @db.Text
+  journalCompleted    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          GoalType
+  title         String
+  description   String?  @db.Text
+  targetMetric  String?
+  targetValue   Float?
+  currentValue  Float?   @default(0)
+  period        String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DisciplineScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  score     Int
+  breakdown Json
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}

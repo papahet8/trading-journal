@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TradeJournal
 
-## Getting Started
+Personal trading journal and dashboard: trades, psychology, habits, analytics, and gamification. Built with Next.js, Prisma, PostgreSQL (Neon), and Auth.js.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Trade logging** — instrument, market, direction, prices, risk/reward, tags, screenshots
+- **Psychology** — pre/post trade mood, sleep, rules, mistakes
+- **Daily journal** — reflections, market notes, routine tracking
+- **Dashboard** — P&L cards, equity curve, GitHub-style heatmap, discipline score, streaks
+- **Analytics** — setup performance, weekday stats, mistake tags, correlations
+- **Goals** — trading and personal targets
+- **Invite-only auth** — for you and a few friends
+
+## P&L formula
+
+```
+(exitPrice - entryPrice) × quantity × directionSign − brokerageCharges
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`directionSign`: +1 for LONG, −1 for SHORT
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Clone & install**
 
-## Learn More
+   ```bash
+   cd trading-journal
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Database** — create a free [Neon](https://neon.tech) Postgres database and copy the connection string.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Environment**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   cp .env.example .env
+   ```
 
-## Deploy on Vercel
+   Set `DATABASE_URL`, `AUTH_SECRET`, and `AUTH_URL=http://localhost:3000`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. **Migrate & seed**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npx prisma migrate dev
+   npm run db:seed
+   ```
+
+5. **Run**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000).
+
+### Default credentials (after seed)
+
+- **Admin:** `admin@tradejournal.local` / `admin123456`
+- **Invite codes:** `FRIEND-001` … `FRIEND-004`
+
+## Deploy to Vercel + Neon
+
+1. Push repo to GitHub.
+2. Create Neon project → copy `DATABASE_URL`.
+3. Import project in Vercel.
+4. Set environment variables:
+   - `DATABASE_URL`
+   - `AUTH_SECRET`
+   - `AUTH_URL` = `https://your-app.vercel.app`
+   - `BLOB_READ_WRITE_TOKEN` (enable Blob in Vercel Storage)
+5. Deploy — build runs `prisma generate`, `prisma migrate deploy`, and `next build`.
+6. Run seed once locally against production DB or use Vercel CLI:
+
+   ```bash
+   DATABASE_URL="..." npm run db:seed
+   ```
+
+## Admin
+
+- Sign in as admin → **Admin invites** in sidebar to generate codes.
+- `POST /api/admin/invites` also creates codes programmatically.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run db:migrate` | Apply migrations (deploy) |
+| `npm run db:seed` | Seed tags, admin, invite codes |
